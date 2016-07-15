@@ -23,7 +23,7 @@ test('renders an empty svg when given an empty list', (t) => {
   )
 })
 
-test('renders a horizontal stacked bar when given a list of { value, name } ', (t) => {
+test('renders a horizontal stacked bar when given a list of { name, value } ', (t) => {
   const renderedComponent = render([
     { name: 'A', value: 25 },
     { name: 'B', value: 50 },
