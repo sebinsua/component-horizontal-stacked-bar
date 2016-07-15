@@ -1,6 +1,6 @@
 {
   "name": "component-horizontal-stacked-bar",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "A horizontal stacked bar component created with React and d3",
   "main": "dist/index.js",
   "jsnext:main": "dist/index.es",
