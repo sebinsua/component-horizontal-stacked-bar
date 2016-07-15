@@ -1,10 +1,9 @@
-function decorateSeriesWithOriginalData (series, data = {}) {
+function decorateSeriesWithOriginalData (series, data = []) {
   return series.map(items => {
     const key = items.key
     return items.map(item => {
-      item.name = key
-      item.value = data[key]
-      return item
+      const matchedOrginalItem = data.find(originalItem => originalItem.name === key)
+      return Object.assign(item, matchedOrginalItem)
     })
   })
 }

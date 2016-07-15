@@ -36,7 +36,7 @@ function HorizontalStackedBar ({
   const seriesGenerator = stack().keys(names)
   const decoratedSeries = decorateSeriesWithOriginalData(
     seriesGenerator([ dataAsObject ]),
-    dataAsObject
+    data
   )
 
   const total = sumValues(data)
