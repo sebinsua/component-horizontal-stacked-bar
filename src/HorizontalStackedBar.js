@@ -1,14 +1,24 @@
 import { PropTypes } from 'react'
-import d3 from 'd3'
 import ReactFauxDOM from 'react-faux-dom'
 
-const colourScale = d3.scale.category10()
+import { select } from 'd3-selection'
+import { scaleLinear } from 'd3-scale'
+import { stack } from 'd3-shape'
+
+import getNames from './getNames'
+import sumValues from './sumValues'
+import toObject from './toObject'
+import decorateSeriesWithOriginalData from './decorateSeriesWithOriginalData'
+
+import defaultGenerateLabel from './generateLabel'
+import defaultGenerateFillColour from './generateFillColour'
+
+function identity (value) {
+  return value
+}
 
 const DEFAULT_WIDTH = 4500
 const DEFAULT_HEIGHT = 150
-
-const DEFAULT_GENERATE_LABEL = (d) => d.value
-const DEFAULT_GENERATE_FILL_COLOUR = (_, i) => colourScale(i)
 
 function HorizontalStackedBar ({
   className,
@@ -16,53 +26,53 @@ function HorizontalStackedBar ({
     width = DEFAULT_WIDTH,
     height = DEFAULT_HEIGHT
   } = {},
-  generateLabel = DEFAULT_GENERATE_LABEL,
-  generateFillColour = DEFAULT_GENERATE_FILL_COLOUR,
+  generateLabel = defaultGenerateLabel,
+  generateFillColour = defaultGenerateFillColour,
   data = []
 }) {
-  const stack = d3.layout.stack()
+  const names = getNames(data)
+  const dataAsObject = toObject(data)
 
-  const layers = data.map((data) => ([ { y: data.value, ...data } ]))
-  stack(layers)
-  const invertedLayers = layers.map((group) => group.map((data) => ({ x: data.y, x0: data.y0, ...data })))
+  const seriesGenerator = stack().keys(names)
+  const decoratedSeries = decorateSeriesWithOriginalData(
+    seriesGenerator([ dataAsObject ]),
+    dataAsObject
+  )
 
-  const xMax = d3.max(invertedLayers, (group) => d3.max(group, (d) => d.x + d.x0))
-  const xScale = d3.scale.linear().domain([0, xMax]).range([0, width])
+  const total = sumValues(data)
+  const xScale = scaleLinear().domain([0, total]).range([0, width])
 
   // `react-faux-dom` is an easy way to use `d3` but render back to React.
   const svgContainer = ReactFauxDOM.createElement('svg')
 
   // TODO: Somehow, the height needs to increase as the width of the screen decreases.
-  const svg = d3.select(svgContainer)
+  const svg = select(svgContainer)
                 .attr('class', className)
                 .attr('viewBox', `0 0 ${width} ${height}`)
                 .attr('preserveAspectRatio', 'xMidYMid meet')
 
   const groups = svg.selectAll('g')
-                    .data(invertedLayers)
-                    .enter()
-                    .append('g')
-                    .style('fill', (group) => generateFillColour(group[0] || {}))
+                    .data(decoratedSeries)
+                    .enter().append('g')
+                      .style('fill', ([ firstItem ], i) => generateFillColour(firstItem, i))
 
   // Add a block
   groups.selectAll('rect')
-        .data((d) => d)
-        .enter()
-        .append('rect')
-        .attr('x', (d) => xScale(d.x0))
-        .attr('height', () => height)
-        .attr('width', (d) => xScale(d.x))
+        .data(identity)
+        .enter().append('rect')
+          .attr('x', (d) => xScale(d[0]))
+          .attr('height', () => height)
+          .attr('width', (d) => xScale(d.value))
 
   // Associate some text with a block
   groups.selectAll('text')
-        .data((d) => d)
-        .enter()
-        .append('text')
-        .text(generateLabel)
-        .attr('x', (d) => xScale(d.x0) + xScale(d.x) / 2)
-        .attr('y', '50%')
-        .attr('alignment-baseline', 'middle')
-        .attr('text-anchor', 'middle')
+        .data(identity)
+        .enter().append('text')
+          .text(generateLabel)
+          .attr('x', (d) => xScale(d[0]) + xScale(d.value) / 2)
+          .attr('y', '50%')
+          .attr('alignment-baseline', 'middle')
+          .attr('text-anchor', 'middle')
 
   return svgContainer.toReact()
 }
@@ -76,8 +86,8 @@ HorizontalStackedBar.propTypes = {
   generateLabel: PropTypes.func,
   generateFillColour: PropTypes.func,
   data: PropTypes.arrayOf(PropTypes.shape({
-    value: PropTypes.number.isRequired,
-    name: PropTypes.string.isRequired
+    name: PropTypes.string.isRequired,
+    value: PropTypes.number.isRequired
   })).isRequired
 }
 
